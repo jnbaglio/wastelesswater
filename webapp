@@ -1,0 +1,132 @@
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+
+export default function HydroPowerCalculator() {
+  const [diameter, setDiameter] = useState(2);
+  const [numFamilies, setNumFamilies] = useState(1);
+  const [numPipes, setNumPipes] = useState(1);
+  const [costPerKWh, setCostPerKWh] = useState(0.18); // default cost per kWh in USD
+  const [installationCost, setInstallationCost] = useState(1000); // example default installation cost
+  const GALLONS_PER_FAMILY_PER_DAY = 160;
+
+  // Constants
+  const GALLON_TO_CUBIC_FEET = 0.133681;
+  const WATER_DENSITY = 62.4; // lb/ft^3
+  const GRAVITY = 32.2; // ft/s^2
+  const SECONDS_PER_MINUTE = 60;
+  const FT_LBF_TO_WATT = 1.3558;
+  const HOURS_PER_DAY = 2;
+  const DAYS_PER_MONTH = 30;
+  const EFFICIENCY_GENERATOR = 0.65;
+  const EFFICIENCY_INDUCTION = 0.5;
+  const TOTAL_EFFICIENCY = EFFICIENCY_GENERATOR * EFFICIENCY_INDUCTION;
+
+  // Calculate total daily greywater flow
+  const totalGallonsPerDay = numFamilies * GALLONS_PER_FAMILY_PER_DAY;
+  const flowRate = totalGallonsPerDay / (HOURS_PER_DAY * 60) / numPipes; // GPM per pipe
+
+  // Calculations
+  const radiusFt = (diameter / 12) / 2;
+  const pipeArea = Math.PI * radiusFt * radiusFt;
+  const flowRateCFS = (flowRate * GALLON_TO_CUBIC_FEET) / SECONDS_PER_MINUTE;
+  const velocity = flowRateCFS / pipeArea;
+  const hydraulicPower = WATER_DENSITY * flowRateCFS * GRAVITY * velocity;
+  const mechanicalWatts = hydraulicPower * FT_LBF_TO_WATT;
+  const electricalWatts = mechanicalWatts * TOTAL_EFFICIENCY;
+  const monthlyKWh = (electricalWatts * HOURS_PER_DAY * DAYS_PER_MONTH) / 1000;
+  const annualKWh = monthlyKWh * 12;
+  const annualSavings = annualKWh * costPerKWh;
+  const savings5yr = annualSavings * 5;
+  const savings10yr = annualSavings * 10;
+  const breakEvenYears = installationCost / annualSavings;
+
+  return (
+    <TooltipProvider>
+      <div className="max-w-xl mx-auto p-4 space-y-6">
+        <h1 className="text-2xl font-bold">Hydro Power Output Calculator</h1>
+
+        <div className="space-y-4">
+          <div>
+            <Label>Pipe Diameter (inches)</Label>
+            <Input
+              type="number"
+              value={diameter}
+              onChange={(e) => setDiameter(parseFloat(e.target.value))}
+              min="0"
+              step="0.1"
+            />
+          </div>
+
+          <div>
+            <Label>Number of Families in the Building</Label>
+            <Input
+              type="number"
+              value={numFamilies}
+              onChange={(e) => setNumFamilies(parseInt(e.target.value))}
+              min="1"
+            />
+          </div>
+
+          <div>
+            <Label>Number of Pipes Used</Label>
+            <Input
+              type="number"
+              value={numPipes}
+              onChange={(e) => setNumPipes(parseInt(e.target.value))}
+              min="1"
+            />
+          </div>
+
+          <div>
+            <Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>Cost per kWh (USD)</span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Average U.S. residential electricity cost is ~$0.18 per kWh. Check your local utility for exact rates.
+                </TooltipContent>
+              </Tooltip>
+            </Label>
+            <Input
+              type="number"
+              value={costPerKWh}
+              onChange={(e) => setCostPerKWh(parseFloat(e.target.value))}
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          <div>
+            <Label>Installation Cost (USD)</Label>
+            <Input
+              type="number"
+              value={installationCost}
+              onChange={(e) => setInstallationCost(parseFloat(e.target.value))}
+              min="0"
+              step="1"
+            />
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <p><strong>Total Greywater Flow Rate per Pipe:</strong> {flowRate.toFixed(2)} GPM</p>
+            <p><strong>Hydraulic Power:</strong> {mechanicalWatts.toFixed(2)} watts</p>
+            <p><strong>Stored Electrical Power:</strong> {electricalWatts.toFixed(2)} watts</p>
+            <p><strong>Monthly Stored Energy:</strong> {monthlyKWh.toFixed(2)} kWh</p>
+            <p><strong>Annual Stored Energy:</strong> {annualKWh.toFixed(2)} kWh</p>
+            <p><strong>Estimated Annual Savings:</strong> ${annualSavings.toFixed(2)}</p>
+            <p><strong>5-Year Cumulative Savings:</strong> ${savings5yr.toFixed(2)}</p>
+            <p><strong>10-Year Cumulative Savings:</strong> ${savings10yr.toFixed(2)}</p>
+            <p><strong>Estimated Break-Even Point:</strong> {breakEvenYears.toFixed(1)} years</p>
+            <p className="text-sm text-muted-foreground">(Assumes 2 hours/day, 65% generator efficiency, 50% inductive loss)</p>
+          </CardContent>
+        </Card>
+      </div>
+    </TooltipProvider>
+  );
+}
